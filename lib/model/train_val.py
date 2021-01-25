@@ -192,14 +192,14 @@ class SolverWrapper(object):
     # Get the variables to restore, ignoring the variables to fix
     variables_to_restore = self.net.get_variables_to_restore(variables, var_keep_dic)
 
-    restorer = tf.train.Saver(variables_to_restore)
-    restorer.restore(sess, self.pretrained_model)
+    # restorer = tf.train.Saver(variables_to_restore)
+    # restorer.restore(sess, self.pretrained_model)
     print('Loaded.')
     # Need to fix the variables before loading, so that the RGB weights are changed to BGR
     # For VGG16 it also changes the convolutional weights fc6 and fc7 to
     # fully connected weights
-    self.net.fix_variables(sess, self.pretrained_model)
-    print('Fixed.')
+    # self.net.fix_variables(sess, self.pretrained_model)
+    # print('Fixed.')
     last_snapshot_iter = 0
     rate = cfg.TRAIN.LEARNING_RATE
     stepsizes = list(cfg.TRAIN.STEPSIZE)
