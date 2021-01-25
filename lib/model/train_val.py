@@ -25,6 +25,8 @@ import tensorflow as tf
 from tensorflow.python import pywrap_tensorflow
 
 from autodist import AutoDist
+from autodist.checkpoint.saver import Saver as autodist_saver
+
 
 class SolverWrapper(object):
   """
@@ -149,7 +151,8 @@ class SolverWrapper(object):
       train_op = self.optimizer.apply_gradients(gvs)
 
     # We will handle the snapshots ourselves
-    self.saver = tf.train.Saver(max_to_keep=100000)
+    # self.saver = tf.train.Saver(max_to_keep=100000)
+    self.saver = autodist_saver()
     # Write the train and validation information to tensorboard
     # self.writer = tf.summary.FileWriter(self.tbdir, sess.graph)
     self.writer = tf.summary.FileWriter(self.tbdir, tf.compat.v1.get_default_graph())
@@ -179,7 +182,7 @@ class SolverWrapper(object):
 
     return lsf, nfiles, sfiles
 
-  def initialize(self, sess):
+  def initialize(self):
     # Initial file lists are empty
     np_paths = []
     ss_paths = []
@@ -194,6 +197,9 @@ class SolverWrapper(object):
 
     # restorer = tf.train.Saver(variables_to_restore)
     # restorer.restore(sess, self.pretrained_model)
+    # restorer = autodist_saver()
+    # restorer.restore(sess, self.pretrained_model)
+
     print('Loaded.')
     # Need to fix the variables before loading, so that the RGB weights are changed to BGR
     # For VGG16 it also changes the convolutional weights fc6 and fc7 to
@@ -256,13 +262,15 @@ class SolverWrapper(object):
     lsf, nfiles, sfiles = self.find_previous()
 
     # Initialize the variables or restore them from the last snapshot
+    # sess = self.autodist.create_distributed_session()
+    # if lsf == 0:
+    #   rate, last_snapshot_iter, stepsizes, np_paths, ss_paths = self.initialize()
+    # else:
+    #   rate, last_snapshot_iter, stepsizes, np_paths, ss_paths = self.restore(sess,
+    #                                                                         str(sfiles[-1]),
+    #                                                                         str(nfiles[-1]))
+    rate, last_snapshot_iter, stepsizes, np_paths, ss_paths = self.initialize()
     sess = self.autodist.create_distributed_session()
-    if lsf == 0:
-      rate, last_snapshot_iter, stepsizes, np_paths, ss_paths = self.initialize(sess)
-    else:
-      rate, last_snapshot_iter, stepsizes, np_paths, ss_paths = self.restore(sess,
-                                                                            str(sfiles[-1]),
-                                                                            str(nfiles[-1]))
     timer = Timer()
     iter = last_snapshot_iter + 1
     last_summary_time = time.time()
