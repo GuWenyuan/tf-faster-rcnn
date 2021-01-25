@@ -365,7 +365,8 @@ def filter_roidb(roidb):
 def train_net(network, imdb, roidb, valroidb, output_dir, tb_dir,
               pretrained_model=None,
               max_iters=40000,
-              autodist=None):
+              autodist=None,
+              tf_graph=tf.Graph()):
   """Train a Faster R-CNN network."""
   roidb = filter_roidb(roidb)
   valroidb = filter_roidb(valroidb)
@@ -374,9 +375,10 @@ def train_net(network, imdb, roidb, valroidb, output_dir, tb_dir,
   tfconfig.gpu_options.allow_growth = True
 
   # with tf.Session(config=tfconfig) as sess:
-  sess = autodist.create_distributed_session()
-  sw = SolverWrapper(sess, network, imdb, roidb, valroidb, output_dir, tb_dir,
-                     pretrained_model=pretrained_model)
-  print('Solving...')
-  sw.train_model(sess, max_iters)
-  print('done solving')
+  with tf_graph.as_default(), autodist.scope():
+    sess = autodist.create_distributed_session()
+    sw = SolverWrapper(sess, network, imdb, roidb, valroidb, output_dir, tb_dir,
+                       pretrained_model=pretrained_model)
+    print('Solving...')
+    sw.train_model(sess, max_iters)
+    print('done solving')

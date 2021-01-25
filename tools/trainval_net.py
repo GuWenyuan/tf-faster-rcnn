@@ -144,4 +144,5 @@ if __name__ == '__main__':
       train_net(net, imdb, roidb, valroidb, output_dir, tb_dir,
                 pretrained_model=args.weight,
                 max_iters=args.max_iters,
-                autodist=ad)
+                autodist=ad,
+                tf_graph=g)
