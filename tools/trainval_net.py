@@ -152,11 +152,9 @@ if __name__ == '__main__':
 
       # tfconfig = tf.ConfigProto(allow_soft_placement=True)
       # tfconfig.gpu_options.allow_growth = True
-
       # with tf.Session(config=tfconfig) as sess:
-      sess = ad.create_distributed_session()
-      sw = SolverWrapper(sess, net, imdb, roidb, valroidb, output_dir, tb_dir,
+      sw = SolverWrapper(ad, net, imdb, roidb, valroidb, output_dir, tb_dir,
                          pretrained_model=args.weight)
       print('Solving...')
-      sw.train_model(sess, args.max_iters)
+      sw.train_model(args.max_iters)
       print('done solving')

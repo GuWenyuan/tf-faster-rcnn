@@ -31,7 +31,9 @@ class SolverWrapper(object):
     A wrapper class for the training process
   """
 
-  def __init__(self, sess, network, imdb, roidb, valroidb, output_dir, tbdir, pretrained_model=None):
+  def __init__(self, autodist, network, imdb, roidb, valroidb, output_dir, tbdir,
+               pretrained_model=None):
+    self.autodist = autodist
     self.net = network
     self.imdb = imdb
     self.roidb = roidb
@@ -115,42 +117,43 @@ class SolverWrapper(object):
         print("It's likely that your checkpoint file has been compressed "
               "with SNAPPY.")
 
-  def construct_graph(self, sess):
-    with sess.graph.as_default():
-      # Set the random seed for tensorflow
-      tf.set_random_seed(cfg.RNG_SEED)
-      # Build the main computation graph
-      layers = self.net.create_architecture('TRAIN', self.imdb.num_classes, tag='default',
-                                            anchor_scales=cfg.ANCHOR_SCALES,
-                                            anchor_ratios=cfg.ANCHOR_RATIOS)
-      # Define the loss
-      loss = layers['total_loss']
-      # Set learning rate and momentum
-      lr = tf.Variable(cfg.TRAIN.LEARNING_RATE, trainable=False)
-      self.optimizer = tf.train.MomentumOptimizer(lr, cfg.TRAIN.MOMENTUM)
+  def construct_graph(self):
+    # with sess.graph.as_default():
+    # Set the random seed for tensorflow
+    tf.set_random_seed(cfg.RNG_SEED)
+    # Build the main computation graph
+    layers = self.net.create_architecture('TRAIN', self.imdb.num_classes, tag='default',
+                                          anchor_scales=cfg.ANCHOR_SCALES,
+                                          anchor_ratios=cfg.ANCHOR_RATIOS)
+    # Define the loss
+    loss = layers['total_loss']
+    # Set learning rate and momentum
+    lr = tf.Variable(cfg.TRAIN.LEARNING_RATE, trainable=False)
+    self.optimizer = tf.train.MomentumOptimizer(lr, cfg.TRAIN.MOMENTUM)
 
-      # Compute the gradients with regard to the loss
-      gvs = self.optimizer.compute_gradients(loss)
-      # Double the gradient of the bias if set
-      if cfg.TRAIN.DOUBLE_BIAS:
-        final_gvs = []
-        with tf.variable_scope('Gradient_Mult') as scope:
-          for grad, var in gvs:
-            scale = 1.
-            if cfg.TRAIN.DOUBLE_BIAS and '/biases:' in var.name:
-              scale *= 2.
-            if not np.allclose(scale, 1.0):
-              grad = tf.multiply(grad, scale)
-            final_gvs.append((grad, var))
-        train_op = self.optimizer.apply_gradients(final_gvs)
-      else:
-        train_op = self.optimizer.apply_gradients(gvs)
+    # Compute the gradients with regard to the loss
+    gvs = self.optimizer.compute_gradients(loss)
+    # Double the gradient of the bias if set
+    if cfg.TRAIN.DOUBLE_BIAS:
+      final_gvs = []
+      with tf.variable_scope('Gradient_Mult') as scope:
+        for grad, var in gvs:
+          scale = 1.
+          if cfg.TRAIN.DOUBLE_BIAS and '/biases:' in var.name:
+            scale *= 2.
+          if not np.allclose(scale, 1.0):
+            grad = tf.multiply(grad, scale)
+          final_gvs.append((grad, var))
+      train_op = self.optimizer.apply_gradients(final_gvs)
+    else:
+      train_op = self.optimizer.apply_gradients(gvs)
 
-      # We will handle the snapshots ourselves
-      self.saver = tf.train.Saver(max_to_keep=100000)
-      # Write the train and validation information to tensorboard
-      self.writer = tf.summary.FileWriter(self.tbdir, sess.graph)
-      self.valwriter = tf.summary.FileWriter(self.tbvaldir)
+    # We will handle the snapshots ourselves
+    self.saver = tf.train.Saver(max_to_keep=100000)
+    # Write the train and validation information to tensorboard
+    # self.writer = tf.summary.FileWriter(self.tbdir, sess.graph)
+    self.writer = tf.summary.FileWriter(self.tbdir, tf.compat.v1.get_default_graph())
+    self.valwriter = tf.summary.FileWriter(self.tbvaldir)
 
     return lr, train_op
 
@@ -241,18 +244,19 @@ class SolverWrapper(object):
       os.remove(str(sfile_meta))
       ss_paths.remove(sfile)
 
-  def train_model(self, sess, max_iters):
+  def train_model(self, max_iters):
     # Build data layers for both training and validation set
     self.data_layer = RoIDataLayer(self.roidb, self.imdb.num_classes)
     self.data_layer_val = RoIDataLayer(self.valroidb, self.imdb.num_classes, random=True)
 
     # Construct the computation graph
-    lr, train_op = self.construct_graph(sess)
+    lr, train_op = self.construct_graph()
 
     # Find previous snapshots if there is any to restore from
     lsf, nfiles, sfiles = self.find_previous()
 
     # Initialize the variables or restore them from the last snapshot
+    sess = self.autodist.create_distributed_session()
     if lsf == 0:
       rate, last_snapshot_iter, stepsizes, np_paths, ss_paths = self.initialize(sess)
     else:
