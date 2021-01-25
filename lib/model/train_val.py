@@ -187,7 +187,7 @@ class SolverWrapper(object):
     print('Loading initial model weights from {:s}'.format(self.pretrained_model))
     variables = tf.global_variables()
     # Initialize all variables first
-    sess.run(tf.variables_initializer(variables, name='init'))
+    # sess.run(tf.variables_initializer(variables, name='init'))
     var_keep_dic = self.get_variables_in_checkpoint_file(self.pretrained_model)
     # Get the variables to restore, ignoring the variables to fix
     variables_to_restore = self.net.get_variables_to_restore(variables, var_keep_dic)
@@ -260,8 +260,8 @@ class SolverWrapper(object):
     if lsf == 0:
       rate, last_snapshot_iter, stepsizes, np_paths, ss_paths = self.initialize(sess)
     else:
-      rate, last_snapshot_iter, stepsizes, np_paths, ss_paths = self.restore(sess, 
-                                                                            str(sfiles[-1]), 
+      rate, last_snapshot_iter, stepsizes, np_paths, ss_paths = self.restore(sess,
+                                                                            str(sfiles[-1]),
                                                                             str(nfiles[-1]))
     timer = Timer()
     iter = last_snapshot_iter + 1
