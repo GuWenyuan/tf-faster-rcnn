@@ -24,6 +24,8 @@ import time
 import tensorflow as tf
 from tensorflow.python import pywrap_tensorflow
 
+from autodist import AutoDist
+
 class SolverWrapper(object):
   """
     A wrapper class for the training process
@@ -362,7 +364,8 @@ def filter_roidb(roidb):
 
 def train_net(network, imdb, roidb, valroidb, output_dir, tb_dir,
               pretrained_model=None,
-              max_iters=40000):
+              max_iters=40000,
+              resource_spec_path="./resource_spec.yml"):
   """Train a Faster R-CNN network."""
   roidb = filter_roidb(roidb)
   valroidb = filter_roidb(valroidb)
@@ -370,7 +373,10 @@ def train_net(network, imdb, roidb, valroidb, output_dir, tb_dir,
   tfconfig = tf.ConfigProto(allow_soft_placement=True)
   tfconfig.gpu_options.allow_growth = True
 
-  with tf.Session(config=tfconfig) as sess:
+  # with tf.Session(config=tfconfig) as sess:
+  ad = AutoDist(resource_spec_path)
+  with tf.Graph().as_default(), ad.scope():
+    sess = ad.create_distributed_session()
     sw = SolverWrapper(sess, network, imdb, roidb, valroidb, output_dir, tb_dir,
                        pretrained_model=pretrained_model)
     print('Solving...')

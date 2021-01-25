@@ -1,0 +1,14 @@
+nodes:
+  - address: 192.168.20.20
+    gpus: [0, 1]
+    chief: true
+    ssh_config: ssh_conf
+  - address: 192.168.20.21
+    gpus: [0, 1]
+    ssh_config: ssh_conf
+
+ssh:
+  ssh_conf:
+    key_file: '/home/devops/.ssh/dev-open.pem'
+    username: 'devops'
+    python_venv: 'source /home/devops/anaconda3/etc/profile.d/conda.sh;conda activate autodist'
