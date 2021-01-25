@@ -16,11 +16,14 @@ import argparse
 import pprint
 import numpy as np
 import sys
+import os
 
 import tensorflow as tf
 from nets.vgg16 import vgg16
 from nets.resnet_v1 import resnetv1
 from nets.mobilenet_v1 import mobilenetv1
+
+from autodist import AutoDist
 
 def parse_args():
   """
@@ -120,20 +123,25 @@ if __name__ == '__main__':
   print('{:d} validation roidb entries'.format(len(valroidb)))
   cfg.TRAIN.USE_FLIPPED = orgflip
 
-  # load network
-  if args.net == 'vgg16':
-    net = vgg16()
-  elif args.net == 'res50':
-    net = resnetv1(num_layers=50)
-  elif args.net == 'res101':
-    net = resnetv1(num_layers=101)
-  elif args.net == 'res152':
-    net = resnetv1(num_layers=152)
-  elif args.net == 'mobile':
-    net = mobilenetv1()
-  else:
-    raise NotImplementedError
-    
-  train_net(net, imdb, roidb, valroidb, output_dir, tb_dir,
-            pretrained_model=args.weight,
-            max_iters=args.max_iters)
+  g = tf.Graph()
+  resource_spec_path = os.path.join(os.path.dirname(__file__), 'resource_spec.yml')
+  ad = AutoDist(resource_spec_path)
+  with g.as_default(), ad.scope():
+      # load network
+      if args.net == 'vgg16':
+        net = vgg16()
+      elif args.net == 'res50':
+        net = resnetv1(num_layers=50)
+      elif args.net == 'res101':
+        net = resnetv1(num_layers=101)
+      elif args.net == 'res152':
+        net = resnetv1(num_layers=152)
+      elif args.net == 'mobile':
+        net = mobilenetv1()
+      else:
+        raise NotImplementedError
+
+      train_net(net, imdb, roidb, valroidb, output_dir, tb_dir,
+                pretrained_model=args.weight,
+                max_iters=args.max_iters,
+                autodist=ad)
