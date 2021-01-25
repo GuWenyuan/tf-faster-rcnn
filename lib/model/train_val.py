@@ -371,8 +371,8 @@ def train_net(network, imdb, roidb, valroidb, output_dir, tb_dir,
   roidb = filter_roidb(roidb)
   valroidb = filter_roidb(valroidb)
 
-  tfconfig = tf.ConfigProto(allow_soft_placement=True)
-  tfconfig.gpu_options.allow_growth = True
+  # tfconfig = tf.ConfigProto(allow_soft_placement=True)
+  # tfconfig.gpu_options.allow_growth = True
 
   # with tf.Session(config=tfconfig) as sess:
   with tf_graph.as_default(), autodist.scope():

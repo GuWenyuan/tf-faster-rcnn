@@ -8,7 +8,7 @@ from __future__ import division
 from __future__ import print_function
 
 import _init_paths
-from model.train_val import get_training_roidb, train_net
+from model.train_val import get_training_roidb, train_net, filter_roidb, SolverWrapper
 from model.config import cfg, cfg_from_file, cfg_from_list, get_output_dir, get_output_tb_dir
 from datasets.factory import get_imdb
 import datasets.imdb
@@ -141,8 +141,22 @@ if __name__ == '__main__':
       else:
         raise NotImplementedError
 
-      train_net(net, imdb, roidb, valroidb, output_dir, tb_dir,
-                pretrained_model=args.weight,
-                max_iters=args.max_iters,
-                autodist=ad,
-                tf_graph=g)
+      # train_net(net, imdb, roidb, valroidb, output_dir, tb_dir,
+      #           pretrained_model=args.weight,
+      #           max_iters=args.max_iters,
+      #           autodist=ad,
+      #           tf_graph=g)
+      """Train a Faster R-CNN network."""
+      roidb = filter_roidb(roidb)
+      valroidb = filter_roidb(valroidb)
+
+      # tfconfig = tf.ConfigProto(allow_soft_placement=True)
+      # tfconfig.gpu_options.allow_growth = True
+
+      # with tf.Session(config=tfconfig) as sess:
+      sess = ad.create_distributed_session()
+      sw = SolverWrapper(sess, net, imdb, roidb, valroidb, output_dir, tb_dir,
+                         pretrained_model=args.weight)
+      print('Solving...')
+      sw.train_model(sess, args.max_iters)
+      print('done solving')
